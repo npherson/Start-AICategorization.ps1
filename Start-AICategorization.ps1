@@ -67,14 +67,11 @@ Param
 
 Begin
 {
-
     $start = Get-Date
-
 
     # Find the site code, error out if we are not on the primary...
     Write-Progress -Activity "Requesting Categorization" -Status "Getting the site code" -PercentComplete 0
     $SiteCode = ''
-
     Get-WMIObject -Namespace "root\SMS" -Class "SMS_ProviderLocation" -ErrorAction SilentlyContinue | foreach-object { if ($_.ProviderForLocalSite -eq $true){$SiteCode=$_.sitecode} }
     If ($SiteCode -eq ''){Throw "Could not determine site code. Ensure you are running this script elevated while on the Primary Site Server. It is not designed to run remotely or without elevation."}
 
@@ -90,14 +87,14 @@ Begin
     Write-Verbose "Unsent categorization requests: $($apps.Count)"
 
 
-    # Determine if we can send all the pending...
+    # Determine if we can send all the pending or if we need to limit it...
     Write-Verbose "Determine how many records we can send for synchronization..."
     If ($limit -ge 10000)
     {
         Write-Verbose "The daily limit for sending records is 10,000. Setting the limit for this script to 9,999 or the total number of pending items, whichever is less."
         $limit = 9999
     }
-    $max = $limit  # Need logic for setting to total appsList.count or 9999 whichever is lower
+    $max = $limit
 
 
     # Send the list for categorization...
@@ -107,7 +104,6 @@ Begin
     {
         If ($i -lt $max)
         {
-
             $i++
             $secondsElapsed = (Get-Date) - $start
             $secondsRemaining = ($secondsElapsed.TotalSeconds / $i) * ($max - $i)
@@ -124,12 +120,11 @@ Begin
                 $request = Invoke-WmiMethod -class SMS_AISoftwarelist -namespace Root\SMS\Site_$($siteCode) -name SetCategorizationRequest -ArgumentList $app.softwarekey
                 If ($request.ReturnValue -eq 0) {Write-Verbose "Status $($request.ReturnValue) for $($app.commonname)"} Else {Write-Warning "Return Status $($request.ReturnValue) for $($app.commonname)."}
             }
-
         }
         Else
         {
-            # Made it to the max
-            Write-Verbose "Synced the maximum number of entries (-Limit, All, or the daily max of 9999)"
+            # Made it to the max or limit...
+            Write-Verbose "Synced the maximum number of entries (-Limit, All, or the daily max of 9999): $($Max)"
             Break    
         }
     }
