@@ -6,7 +6,7 @@
         Use Start-AICategorization to take all of the Asset Intelligence Inventoried Software that needs to be categorized and mark them for upload to System Center Online for categorization. This script can be used as a scheduled task to send new software periodically for categorization.
     
     .PARAMETER Limit
-        Optionally specify a naximum number of records to send. If left blank, it will send all uncategorized software up to 9,999.
+        Optionally specify a naximum number of records to send. If left blank, it will send all uncategorized software up to 9,999 titles.
 
     .PARAMETER IgnoreString	
         Optionally specify a string to look for in the Product Name to exclude records from synchrization. If the application meta data may include private data, you can use this to not send the records.
@@ -33,6 +33,7 @@
         Author  : Nash Pherson
         Email   : nashp@nowmicro.com
         Twitter : @KidMysic
+        Feedback: Please send feedback!  This is my first real attempt publishing/sharing a powershell script!
         Blog    : http://blog.nowmicro.com/category/nash-pherson/
         Blog    : http://windowsitpro.com/author/nash-pherson
         
@@ -54,9 +55,7 @@ Param
     [ValidateNotNullOrEmpty()]
     [ValidateRange(1,9999)]
     [Int]$Limit = 9999,
-    [Switch]$SyncCatalog = $False,
-    [Switch]$WhatIf = $False
-
+    [Switch]$SyncCatalog = $False
 )
 
 Begin
@@ -80,7 +79,7 @@ Begin
     Write-Progress -Activity "Requesting Categorization" -Status "Gathering list of applications from AI that are pending classification" -PercentComplete 2
     Write-Verbose "Getting list of applications from AI that are pending classification..."
     $appsList = Get-WmiObject -Namespace Root\SMS\Site_$($siteCode) -Class SMS_AISoftwarelist -Filter "State = 4"
-    Write-host "Unsent categorization requests: " $apps.Count
+    Write-Verbose "Unsent categorization requests: $($apps.Count)"
 
 
     # Determine if we can send all the pending...
@@ -133,7 +132,7 @@ Begin
     $secondsElapsed = (Get-Date) - $start
     #$totalTime =  $secondsElapsed.ToString("hh\:mm\:ss")
     $totalTime = $secondsElapsed.ToString("hh\ \h\o\u\r\s\ mm\ \m\i\n\ ss\ \s\e\c")
-
+    write-host "Summary Information"
     write-host "Before: $($SummaryBefore.Uncategorized)"
     write-host "After:  $($SummaryAfter.Uncategorized)"
     write-host "Tried:  $($i)"
