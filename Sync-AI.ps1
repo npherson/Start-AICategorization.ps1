@@ -12,7 +12,7 @@
         Optionally specify a string to look for in the Product Name to exclude records from synchrization. If the application meta data may include private data, you can use this to not send the records.
 
     .PARAMETER SyncCatalog	
-        Optionally tell the AI Sync Point to start a synchronization to send pending categorizations. The default polling period is 15 minutes, so monitor AIUpdateSvc.log and aikbmgr.log for status.
+        Optionally tell the AI Sync Point to start a synchronization to send pending categorizations. Manual synchronizations are only accepted 1 time every 12 hours. The default polling period is 15 minutes, so monitor AIUpdateSvc.log and aikbmgr.log for status.
         
     .EXAMPLE
         Request Asset Intelligence categorization for all uncategorized Inventoried Software:
