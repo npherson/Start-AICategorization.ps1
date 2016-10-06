@@ -1,9 +1,9 @@
 <#
     .SYNOPSIS
-        Tell the AI Sync Point to categorize Inventoried Software that is not categorized or already pending categorization. 
+        Used to flag all uncategorized software for categorization by the Asset Intelligence service.
 
     .DESCRIPTION
-        Use Sync-AI to take all of the Asset Intelligence Inventoried Software that needs to be categorized and mark them for synchronization. This script can be used as a scheduled task to send new software periodically for categorization.
+        Use Start-AICategorization to take all of the Asset Intelligence Inventoried Software that needs to be categorized and mark them for upload to System Center Online for categorization. This script can be used as a scheduled task to send new software periodically for categorization.
     
     .PARAMETER Limit
         Optionally specify a naximum number of records to send. If left blank, it will send all uncategorized software up to 9,999.
@@ -17,17 +17,17 @@
     .EXAMPLE
         Request Asset Intelligence categorization for all uncategorized Inventoried Software:
     
-        PS C:\> Sync-AI.ps1
+        PS C:\> Start-AICategorization
 
     .EXAMPLE
         Request Asset Intelligence categorization for up to 100 Inventoried Software records except for titles that contain "MyDomain":
         
-        PS C:\> Sync-AI.ps1 -Limit 100 -IgnoreString "MyDomain"
+        PS C:\> Start-AICategorization -Limit 100 -IgnoreString "MyDomain"
 
     .EXAMPLE
         Request Asset Intelligence categorization for up to 500 Inventoried Software records and trigger an AI Sync Point synchronization: 
         
-        PS C:\> Sync-AI.ps1 -Limit 500 -SyncCatalog
+        PS C:\> Start-AICategorization -Limit 500 -SyncCatalog
 
     .NOTES
         Author  : Nash Pherson
@@ -121,7 +121,7 @@ Begin
         }
     }
 
-    # Pull the AI summary after marking records...
+    # Pull the AI summary after requesting categorization...
     Write-Progress -Activity "Requesting Categorization" -Status "Gathering summary of AI classification status" -PercentComplete 100
     Write-Verbose "Getting summary of AI classification status before running..."
     $summaryAfter = Invoke-WmiMethod -class SMS_AISoftwarelist -namespace Root\SMS\Site_$($siteCode) -name GetSummary
