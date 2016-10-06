@@ -12,7 +12,7 @@
         Optionally specify a string to look for in the Product Name to exclude records from synchrization. If the application meta data may include private data, you can use this to not send the records.
 
     .PARAMETER SyncCatalog	
-        Optionally tell the AI Sync Point to start a synchronization to send pending categorizations. Manual synchronizations are only accepted 1 time every 12 hours. The default polling period is 15 minutes, so monitor AIUpdateSvc.log and aikbmgr.log for status.
+        Optionally tell the AI Sync Point to start a synchronization to send pending categorization requests. Manual synchronizations are only accepted 1 time every 12 hours. The default polling period is 15 minutes, so monitor AIUpdateSvc.log and aikbmgr.log for status.
         
     .EXAMPLE
         Request Asset Intelligence categorization for all uncategorized Inventoried Software:
@@ -20,12 +20,12 @@
         PS C:\> Start-AICategorization
 
     .EXAMPLE
-        Request Asset Intelligence categorization for up to 100 Inventoried Software records except for titles that contain "MyDomain":
+        Request Asset Intelligence categorization for up to 100 Inventoried Software records while excluding any software titles that contain "MyDomain":
         
         PS C:\> Start-AICategorization -Limit 100 -IgnoreString "MyDomain"
 
     .EXAMPLE
-        Request Asset Intelligence categorization for up to 500 Inventoried Software records and trigger an AI Sync Point synchronization: 
+        Request Asset Intelligence categorization for up to 500 Inventoried Software records and trigger a synchronization of the AI Sync Point with System Center Online: 
         
         PS C:\> Start-AICategorization -Limit 500 -SyncCatalog
 
