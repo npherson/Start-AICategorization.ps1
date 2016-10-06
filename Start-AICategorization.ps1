@@ -92,7 +92,8 @@ Begin
 
     # Determine if we can send all the pending...
     Write-Verbose "Determine how many records we can send for synchronization..."
-    If ($limit -ge 10000) {
+    If ($limit -ge 10000)
+    {
         Write-Verbose "The daily limit for sending records is 10,000. Setting the limit for this script to 9,999 or the total number of pending items, whichever is less."
         $limit = 9999
     }
@@ -102,8 +103,10 @@ Begin
     # Send the list for categorization...
     Write-Verbose "Attempting to categorize pending software..."
     $i = 0
-    foreach ($app in $appsList) {
-        If ($i -lt $max) {
+    foreach ($app in $appsList)
+    {
+        If ($i -lt $max)
+        {
 
             $i++
             $secondsElapsed = (Get-Date) - $start
@@ -116,12 +119,15 @@ Begin
             {
                 Write-Warning "Not sending $($app.commonname) because it contains an ignored string: *$($ignoreString)*"
             } 
-            ElseIf ($pscmdlet.ShouldProcess('WHATIF Request categorization', $app.commonname)) {
+            ElseIf ($pscmdlet.ShouldProcess('WHATIF Request categorization', $app.commonname))
+            {
                 $request = Invoke-WmiMethod -class SMS_AISoftwarelist -namespace Root\SMS\Site_$($siteCode) -name SetCategorizationRequest -ArgumentList $app.softwarekey
                 If ($request.ReturnValue -eq 0) {Write-Verbose "Status $($request.ReturnValue) for $($app.commonname)"} Else {Write-Warning "Return Status $($request.ReturnValue) for $($app.commonname)."}
             }
 
-        } Else {
+        }
+        Else
+        {
             # Made it to the max
             Write-Verbose "Synced the maximum number of entries (-Limit, All, or the daily max of 9999)"
             Break    
@@ -150,7 +156,8 @@ Begin
 
 
     # Tell the AI Sync Point to synchronize...
-    If ($SyncCatalog) {
+    If ($SyncCatalog)
+    {
         Write-Progress -Activity "Requesting Categorization" -Status "Telling AI Sync Point to synchronize at next polling interval." -PercentComplete 100
         Write-Verbose "Flagging AI service to start synchronizing at next cycle. Default polling interval is 900 seconds. Monitor AIUpdateSvc.log and aikbmgr.log for status."
         If ($pscmdlet.ShouldProcess('WHATIF Start sync', $app.commonname)) {Invoke-WmiMethod -class SMS_AIProxy -namespace Root\SMS\Site_$($siteCode) -name RequestCatalogUpdate}
