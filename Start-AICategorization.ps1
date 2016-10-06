@@ -5,15 +5,18 @@
     .DESCRIPTION
         Use Start-AICategorization to take all of the Asset Intelligence Inventoried Software that needs to be categorized and mark them for upload to System Center Online for categorization. This script can be used as a scheduled task to send new software periodically for categorization.
     
+    .PARAMETER SyncCatalog	
+        Optionally tell the AI Sync Point to start a synchronization to send pending categorization requests. Manual synchronizations are only accepted 1 time every 12 hours. The default polling period is 15 minutes, so monitor AIUpdateSvc.log and aikbmgr.log for status.
+       
     .PARAMETER Limit
         Optionally specify a naximum number of records to send. If left blank, it will send all uncategorized software up to 9,999 titles.
 
     .PARAMETER IgnoreString	
         Optionally specify a string to look for in the Product Name to exclude records from synchrization. If the application meta data may include private data, you can use this to not send the records.
 
-    .PARAMETER SyncCatalog	
-        Optionally tell the AI Sync Point to start a synchronization to send pending categorization requests. Manual synchronizations are only accepted 1 time every 12 hours. The default polling period is 15 minutes, so monitor AIUpdateSvc.log and aikbmgr.log for status.
-        
+    .PARAMETER HideSummary
+        Optionally hide the summary information that is displayed at the end.
+ 
     .EXAMPLE
         Request Asset Intelligence categorization for all uncategorized Inventoried Software:
     
@@ -50,12 +53,14 @@
 
 Param
 (
-    [ValidateNotNullOrEmpty()]
-    [String]$IgnoreString,
+    [Switch]$SyncCatalog = $False,
     [ValidateNotNullOrEmpty()]
     [ValidateRange(1,9999)]
     [Int]$Limit = 9999,
-    [Switch]$SyncCatalog = $False
+    [ValidateNotNullOrEmpty()]
+    [String]$IgnoreString,
+    [Switch]$HideSummary = $False
+    
 )
 
 Begin
