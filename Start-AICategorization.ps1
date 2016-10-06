@@ -47,6 +47,8 @@
         http://www.nowmicro.com
 #>
 
+##Requires -RunAsAdministrator
+
 [CmdletBinding(
     SupportsShouldProcess=$True
 )]
@@ -58,7 +60,7 @@ Param
     [ValidateRange(1,9999)]
     [Int]$Limit = 9999,
     [ValidateNotNullOrEmpty()]
-    [String]$IgnoreString,
+    [String]$IgnoreString = "",
     [Switch]$HideSummary = $False
     
 )
@@ -72,8 +74,9 @@ Begin
     # Find the site code, error out if we are not on the primary...
     Write-Progress -Activity "Requesting Categorization" -Status "Getting the site code" -PercentComplete 0
     $SiteCode = ''
-    Get-WMIObject -Namespace "root\SMS" -Class "SMS_ProviderLocation" | foreach-object { if ($_.ProviderForLocalSite -eq $true){$SiteCode=$_.sitecode} }
-    If ($SiteCode -eq ''){Throw "Could not determine site code. Ensure you are running this script from the Primary Site Server. It is not designed to run remotely."}
+
+    Get-WMIObject -Namespace "root\SMS" -Class "SMS_ProviderLocation" -ErrorAction SilentlyContinue | foreach-object { if ($_.ProviderForLocalSite -eq $true){$SiteCode=$_.sitecode} }
+    If ($SiteCode -eq ''){Throw "Could not determine site code. Ensure you are running this script elevated while on the Primary Site Server. It is not designed to run remotely or without elevation."}
 
     # Pull the AI summary...
     Write-Progress -Activity "Requesting Categorization" -Status "Gathering summary of AI classification status" -PercentComplete 1
@@ -103,23 +106,23 @@ Begin
         If ($i -lt $max) {
 
             $i++
-
             $secondsElapsed = (Get-Date) - $start
             $secondsRemaining = ($secondsElapsed.TotalSeconds / $i) * ($max - $i)
 
             Write-Progress -Activity "Requesting Categorization" -Status "Sending $i of $max - State $($app.State) - $($app.commonname)" -PercentComplete (($i / $max)*100) -SecondsRemaining $secondsRemaining
             Write-Verbose "Sending $i of $max - State $($app.State) - $($app.commonname) - $($App.SoftwareKey)"
-            If ($IgnoreString) {
-                If ($app.commonname -like "*$($ignoreString)*") {
-                    Write-Warning "Not sending $($app.commonname) because it contains an ignored string: *$($ignoreString)*"
-                } Else {
-                    If ($pscmdlet.ShouldProcess('WHATIF Request categorization', $app.commonname)) {
-                        $request = Invoke-WmiMethod -class SMS_AISoftwarelist -namespace Root\SMS\Site_$($siteCode) -name SetCategorizationRequest -ArgumentList $app.softwarekey
-                        If ($request.ReturnValue -eq 0) {Write-Verbose "Status $($request.ReturnValue) for $($app.commonname)"} Else {Write-Warning "Return Status $($request.ReturnValue) for $($app.commonname)."}
-                    }
-                }
+
+            If ($app.commonname -like "*$($ignoreString)*")
+            {
+                Write-Warning "Not sending $($app.commonname) because it contains an ignored string: *$($ignoreString)*"
+            } 
+            ElseIf ($pscmdlet.ShouldProcess('WHATIF Request categorization', $app.commonname)) {
+                $request = Invoke-WmiMethod -class SMS_AISoftwarelist -namespace Root\SMS\Site_$($siteCode) -name SetCategorizationRequest -ArgumentList $app.softwarekey
+                If ($request.ReturnValue -eq 0) {Write-Verbose "Status $($request.ReturnValue) for $($app.commonname)"} Else {Write-Warning "Return Status $($request.ReturnValue) for $($app.commonname)."}
             }
+
         } Else {
+            # Made it to the max
             Write-Verbose "Synced the maximum number of entries (-Limit, All, or the daily max of 9999)"
             Break    
         }
@@ -132,7 +135,7 @@ Begin
     Write-Progress -Activity "Requesting Categorization" -Completed
 
     Write-Verbose "Final statistics:"
-    write-Verbose $summaryAfter
+    # write-Verbose "$($summaryAfter)" FIX THIS
 
     $secondsElapsed = (Get-Date) - $start
     #$totalTime =  $secondsElapsed.ToString("hh\:mm\:ss")
