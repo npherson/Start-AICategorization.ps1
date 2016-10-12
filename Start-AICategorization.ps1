@@ -135,11 +135,11 @@ Begin
     $summaryAfter = Invoke-WmiMethod -class SMS_AISoftwarelist -namespace Root\SMS\Site_$($siteCode) -name GetSummary
     Write-Progress -Activity "Requesting Categorization" -Completed
 
-    Write-Verbose "Beginning statistics:"
-    write-Verbose "$($summaryAfter)"
+    Write-Verbose "Beginning Statistics:"
+    write-Verbose $summaryBefore
 
     Write-Verbose "Ending Statistics:"
-    write-Verbose "$($summaryAfter)"
+    write-Verbose $summaryAfter
 
     $secondsElapsed = (Get-Date) - $start
     #$totalTime =  $secondsElapsed.ToString("hh\:mm\:ss")
