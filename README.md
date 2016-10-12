@@ -1,5 +1,6 @@
 # Start-AICategorization.ps1
-Request all uncategorized Inventoried Software identified by SCCM Asset Intelligence be categorized by the System Center Online service.
+Request all uncategorized Inventoried Software in SCCM Asset Intelligence be categorized by the System Center Online service.
+https://technet.microsoft.com/en-us/library/gg712316.aspx#BKMK_RequestCatalogUpdate
 
 In order to use this script, you must
  - have already installed an Asset Intelligence Synchornization Point role (typically on your Primary Site Server if it has internet access, as it is not a client-facing role).
