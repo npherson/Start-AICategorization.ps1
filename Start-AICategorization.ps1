@@ -45,6 +45,7 @@
         Feedback: Please send feedback!  This is my first real attempt publishing/sharing a powershell script!
         Blog    : http://blog.nowmicro.com/category/nash-pherson/
         Blog    : http://windowsitpro.com/author/nash-pherson
+        Tools   : http://nowmicro.com/rct
         
     .LINK
         http://gallery.technet.microsoft.com/scirptscenter/ PUT THE GUID HERE
@@ -90,9 +91,9 @@ Begin
     # Pull the AI pending list...
     Write-Progress -Activity 'Requesting Categorization' -Status 'Gathering list of applications from AI that are pending classification' -PercentComplete 2
     Write-Verbose -Message 'Getting list of applications from AI that are pending classification...'
-    $appsList = Get-WmiObject -Namespace Root\SMS\Site_$($siteCode) -Class SMS_AISoftwarelist -Filter 'State = 4'
+    [array]$appsList = Get-WmiObject -Namespace Root\SMS\Site_$($siteCode) -Class SMS_AISoftwarelist -Filter 'State = 4'
     Write-Verbose -Message "Categorized applications according to summarized AI data: $($appsList.Count)"
-
+    
 
     # Determine if we can send all the pending or if we need to limit it...
     Write-Verbose -Message 'Determine how many records we can send for synchronization...'
@@ -102,7 +103,7 @@ Begin
         $limit = 9999
     }
     $max = $limit
-
+    Write-Verbose -Message "Maximum number of software to attempt requesting categoriztaion: $($max)"
 
     # Send the list for categorization...
     Write-Verbose -Message 'Attempting to categorize pending software...'
@@ -110,11 +111,18 @@ Begin
     foreach ($app in $appsList)
     {
 
-
-            
         $i++
         $secondsElapsed = (Get-Date) - $start
         $secondsRemaining = ($secondsElapsed.TotalSeconds / $i) * ($max - $i)
+
+    
+        # Check to see if we can keep going...
+        If($i -gt $max)
+        {
+                Write-Verbose -Message "Attempted the maximum number of entries (-Limit, All, or the daily max of 9999): $($Max)"
+                Break
+        }    
+
 
         $skip = $False
         # Check for ignored Product Name...
@@ -126,6 +134,7 @@ Begin
                 Write-Warning -Message "Not sending `"$($app.CommonName)`" because the Publisher contains an ignored string: *$($prodName)*"
             }
         }
+        
             
         # Check for ignored Publisher...
         Foreach ($pubName in $IgnorePublishers)
@@ -133,16 +142,18 @@ Begin
             If ($pubName -ne '' -And $app.CommonPublisher -Like "*$($pubName)*")
             {
                 $skip=$True
-                Write-Warning -Message "Not sending `"$($app.CommonName)`" because the Publisher contains an ignored string: *$($pubName)*"
+                Write-Warning -Message "Not sending `"$($app.CommonName)`" from `"$($app.CommonPublisher)`" because the Publisher contains an ignored string: *$($pubName)*"
             }
         }
 
-
         # Stop this iteration of the loop if we found an ignoreProducts or ignorePublishers match...
-        If ($skip = $false) {Continue}
+        If ($skip -eq $True) {
+            Continue
+        }
         
 
-        If (($pscmdlet.ShouldProcess($app.CommonName, 'WHATIF Request categorization')) -and $skip -eq $false)
+        # Finally... let's try to send some software for categorization!
+        If ($pscmdlet.ShouldProcess($app.CommonName, 'Request categorization'))
         {
             Write-Progress -Activity 'Requesting Categorization' -Status "Sending $i of $max - State $($app.State) - $($app.CommonName)" -PercentComplete (($i / $max)*100) -SecondsRemaining $secondsRemaining
             Write-Verbose -Message "Sending $i of $max - State $($app.State) - $($app.CommonName) - $($App.SoftwareKey)"
@@ -152,14 +163,6 @@ Begin
                 
             # Output the status if successful and a warning if it fails...
             If ($request.ReturnValue -eq 0) {Write-Verbose -Message "Status $($request.ReturnValue) for $($app.CommonName)"} Else {Write-Warning -Message "Return Status $($request.ReturnValue) for $($app.CommonName)."}
-        }
-        
-    
-        # Check to see if we can keep going...
-        If($i -ge $max)
-        {
-                Write-Verbose -Message "Attempted the maximum number of entries (-Limit, All, or the daily max of 9999): $($Max)"
-                Break
         }
 
     }
@@ -186,6 +189,6 @@ Begin
     {
         Write-Progress -Activity 'Requesting Categorization' -Status 'Telling AI Sync Point to synchronize at next polling interval.' -PercentComplete 100
         Write-Verbose -Message 'Flagging AI service to start synchronizing at next cycle. Default polling interval is 900 seconds. Monitor AIUpdateSvc.log and aikbmgr.log for status.'
-        If ($pscmdlet.ShouldProcess('WHATIF Start sync', $app.CommonName)) {Invoke-WmiMethod -class SMS_AIProxy -namespace Root\SMS\Site_$($siteCode) -name RequestCatalogUpdate}
+        If ($pscmdlet.ShouldProcess('Start sync', $app.CommonName)) {Invoke-WmiMethod -class SMS_AIProxy -namespace Root\SMS\Site_$($siteCode) -name RequestCatalogUpdate}
     }
 }
