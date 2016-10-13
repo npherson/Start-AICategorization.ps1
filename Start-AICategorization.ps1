@@ -14,8 +14,11 @@
     .PARAMETER Limit
         Optionally specify a naximum number of records to send. If left blank, it will send all uncategorized software up to 9,999 titles.
 
-    .PARAMETER IgnoreString	
-        Optionally specify a string to look for in the Product Name to exclude records from synchrization. If the application meta data may include private data, you can use this to not send the records.
+    .PARAMETER IgnoreProducts	
+        Optionally specify one or more strings to look for in the Product Name to exclude records from synchorization. If the application meta data may include private data, you can use this to not send the records.
+
+    .PARAMETER IgnorePublishers
+        Optionally specify one or more strings to look for in the Publisher name to exlcude records from synchronization.
 
     .PARAMETER HideSummary
         Optionally hide the summary information that is displayed at the end.
@@ -26,9 +29,9 @@
         PS C:\> Start-AICategorization
 
     .EXAMPLE
-        Request Asset Intelligence categorization for up to 100 Inventoried Software records while excluding any software titles that contain "MyDomain":
+        Request Asset Intelligence categorization for up to 100 Inventoried Software records while excluding any software titles that contain "MyDomain" or "MyCustomApp":
         
-        PS C:\> Start-AICategorization -Limit 100 -IgnoreString "MyDomain"
+        PS C:\> Start-AICategorization -Limit 100 -IgnoreProducts "MyDomain","MyCustomApp"
 
     .EXAMPLE
         Request Asset Intelligence categorization for up to 500 Inventoried Software records and trigger a synchronization of the AI Sync Point with System Center Online: 
@@ -63,7 +66,8 @@ Param
     [ValidateRange(1,9999)]
     [Int]$Limit = 1,
     [ValidateNotNullOrEmpty()]
-    [String]$IgnoreString = '',
+    [String[]]$IgnoreProducts = @(''),
+    [String[]]$IgnorePublishers = @(''),
     [Switch]$HideSummary = $False
     
 )
@@ -114,15 +118,19 @@ Begin
             Write-Progress -Activity 'Requesting Categorization' -Status "Sending $i of $max - State $($app.State) - $($app.commonname)" -PercentComplete (($i / $max)*100) -SecondsRemaining $secondsRemaining
             Write-Verbose -Message "Sending $i of $max - State $($app.State) - $($app.commonname) - $($App.SoftwareKey)"
 
-            If ($app.commonname -like "*$($ignoreString)*" -And $ignoreString -ne '')
+            ForEach ($ignoreProd in $IgnoreProducts)
             {
-                Write-Warning -Message "Not sending $($app.commonname) because it contains an ignored string: *$($ignoreString)*"
-            } 
-            ElseIf ($pscmdlet.ShouldProcess($app.commonname, 'WHATIF Request categorization'))
-            {
-                $request = Invoke-WmiMethod -class SMS_AISoftwarelist -namespace Root\SMS\Site_$($siteCode) -name SetCategorizationRequest -ArgumentList $app.softwarekey
-                If ($request.ReturnValue -eq 0) {Write-Verbose -Message "Status $($request.ReturnValue) for $($app.commonname)"} Else {Write-Warning -Message "Return Status $($request.ReturnValue) for $($app.commonname)."}
+                If ($app.commonname -like "*$($ignoreProd)*" -And $IgnoreProd -ne '')
+                {
+                    Write-Warning -Message "Not sending $($app.commonname) because it contains an ignored string: *$($IgnoreProducts)*"
+                } 
+                ElseIf ($pscmdlet.ShouldProcess($app.commonname, 'WHATIF Request categorization'))
+                {
+                    $request = Invoke-WmiMethod -class SMS_AISoftwarelist -namespace Root\SMS\Site_$($siteCode) -name SetCategorizationRequest -ArgumentList $app.softwarekey
+                    If ($request.ReturnValue -eq 0) {Write-Verbose -Message "Status $($request.ReturnValue) for $($app.commonname)"} Else {Write-Warning -Message "Return Status $($request.ReturnValue) for $($app.commonname)."}
+                }
             }
+            
         }
         Else
         {
