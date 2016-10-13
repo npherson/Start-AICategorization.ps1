@@ -18,7 +18,7 @@
         Optionally specify one or more strings to look for in the Product Name to exclude records from synchorization. If the application meta data may include private data, you can use this to not send the records.
 
     .PARAMETER IgnorePublishers
-        Optionally specify one or more strings to look for in the Publisher name to exlcude records from synchronization.
+        Optionally specify one or more strings to look for in the Publisher name to exlcude records from synchronization. If the application meta data may include private data, you can use this to not send the records.
 
     .PARAMETER HideSummary
         Optionally hide the summary information that is displayed at the end.
@@ -31,7 +31,7 @@
     .EXAMPLE
         Request Asset Intelligence categorization for up to 100 Inventoried Software records while excluding any software titles that contain "MyDomain" or "MyCustomApp":
         
-        PS C:\> Start-AICategorization -Limit 100 -IgnoreProducts "MyDomain","MyCustomApp"
+        PS C:\> Start-AICategorization -Limit 100 -IgnoreProducts "MyDomain","MyCustomApp","Yahoo Intelligence Email Scanner"
 
     .EXAMPLE
         Request Asset Intelligence categorization for up to 500 Inventoried Software records and trigger a synchronization of the AI Sync Point with System Center Online: 
@@ -109,35 +109,51 @@ Begin
     $i = 0
     foreach ($app in $appsList)
     {
-        If ($i -lt $max)
-        {
-            $i++
-            $secondsElapsed = (Get-Date) - $start
-            $secondsRemaining = ($secondsElapsed.TotalSeconds / $i) * ($max - $i)
 
-            Write-Progress -Activity 'Requesting Categorization' -Status "Sending $i of $max - State $($app.State) - $($app.commonname)" -PercentComplete (($i / $max)*100) -SecondsRemaining $secondsRemaining
-            Write-Verbose -Message "Sending $i of $max - State $($app.State) - $($app.commonname) - $($App.SoftwareKey)"
 
-            ForEach ($ignoreProd in $IgnoreProducts)
-            {
-                If ($app.commonname -like "*$($ignoreProd)*" -And $IgnoreProd -ne '')
-                {
-                    Write-Warning -Message "Not sending $($app.commonname) because it contains an ignored string: *$($IgnoreProducts)*"
-                } 
-                ElseIf ($pscmdlet.ShouldProcess($app.commonname, 'WHATIF Request categorization'))
-                {
-                    $request = Invoke-WmiMethod -class SMS_AISoftwarelist -namespace Root\SMS\Site_$($siteCode) -name SetCategorizationRequest -ArgumentList $app.softwarekey
-                    If ($request.ReturnValue -eq 0) {Write-Verbose -Message "Status $($request.ReturnValue) for $($app.commonname)"} Else {Write-Warning -Message "Return Status $($request.ReturnValue) for $($app.commonname)."}
-                }
-            }
             
-        }
-        Else
+        $i++
+        $secondsElapsed = (Get-Date) - $start
+        $secondsRemaining = ($secondsElapsed.TotalSeconds / $i) * ($max - $i)
+
+        $skip = $False
+        # Check for ignored Product Name...
+        Foreach ($prodName in $IgnoreProducts)
         {
-            # Made it to the max or limit...
-            Write-Verbose -Message "Synced the maximum number of entries (-Limit, All, or the daily max of 9999): $($Max)"
-            Break    
+            If ($app.commonname -Like $prodName)
+            {
+                $skip=$True
+                Write-Warning -Message "Not sending $($app.commonname) because the Publisher contains an ignored string: *$(pubName)*"
+            }
         }
+            
+        # Check for ignored Publisher...
+        Foreach ($pubName in $IgnorePublishers)
+        {
+            If ($app.publisher -Like $pubName)
+            {
+                $skip=$True
+                Write-Warning -Message "Not sending $($app.commonname) because the Publisher contains an ignored string: *$(pubName)*"
+            }
+        }
+
+
+        Write-Progress -Activity 'Requesting Categorization' -Status "Sending $i of $max - State $($app.State) - $($app.commonname)" -PercentComplete (($i / $max)*100) -SecondsRemaining $secondsRemaining
+        Write-Verbose -Message "Sending $i of $max - State $($app.State) - $($app.commonname) - $($App.SoftwareKey)"
+
+        If ($skip = $false -And $pscmdlet.ShouldProcess($app.commonname, 'WHATIF Request categorization'))
+            {
+                $request = Invoke-WmiMethod -class SMS_AISoftwarelist -namespace Root\SMS\Site_$($siteCode) -name SetCategorizationRequest -ArgumentList $app.softwarekey
+                If ($request.ReturnValue -eq 0) {Write-Verbose -Message "Status $($request.ReturnValue) for $($app.commonname)"} Else {Write-Warning -Message "Return Status $($request.ReturnValue) for $($app.commonname)."}
+            }
+    
+        # Check to see if we can keep going...
+        If($i -ge $max)
+        {
+                Write-Verbose -Message "Attempted the maximum number of entries (-Limit, All, or the daily max of 9999): $($Max)"
+                Break
+        }
+
     }
 
     # Pull the AI summary after requesting categorization...
