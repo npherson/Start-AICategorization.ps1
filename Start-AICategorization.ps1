@@ -6,6 +6,7 @@
         Use Start-AICategorization to take all of the Asset Intelligence Inventoried Software that needs to be categorized and mark them for upload to System Center Online for categorization. This script can be used as a scheduled task to send new software periodically for categorization.
 
         See the Request Catalog Update documentation for more details:
+        https://technet.microsoft.com/en-us/library/gg712316.aspx#BKMK_RequestCatalogUpdate
 
     .PARAMETER SyncCatalog	
         Optionally tell the AI Sync Point to start a synchronization to send pending categorization requests. Manual synchronizations are only accepted 1 time every 12 hours. The default polling period is 15 minutes, so monitor AIUpdateSvc.log and aikbmgr.log for status.
