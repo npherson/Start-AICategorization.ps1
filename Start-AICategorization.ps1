@@ -91,7 +91,7 @@ Begin
     Write-Progress -Activity 'Requesting Categorization' -Status 'Gathering list of applications from AI that are pending classification' -PercentComplete 2
     Write-Verbose -Message 'Getting list of applications from AI that are pending classification...'
     $appsList = Get-WmiObject -Namespace Root\SMS\Site_$($siteCode) -Class SMS_AISoftwarelist -Filter 'State = 4'
-    Write-Verbose -Message "Unsent categorization requests: $($appsList.Count)"
+    Write-Verbose -Message "Categorized applications according to summarized AI data: $($appsList.Count)"
 
 
     # Determine if we can send all the pending or if we need to limit it...
@@ -120,32 +120,40 @@ Begin
         # Check for ignored Product Name...
         Foreach ($prodName in $IgnoreProducts)
         {
-            If ($app.commonname -Like $prodName)
+            If ($prodName -ne '' -And $app.CommonName -Like "*$($prodName)*")
             {
                 $skip=$True
-                Write-Warning -Message "Not sending $($app.commonname) because the Publisher contains an ignored string: *$(pubName)*"
+                Write-Warning -Message "Not sending `"$($app.CommonName)`" because the Publisher contains an ignored string: *$($prodName)*"
             }
         }
             
         # Check for ignored Publisher...
         Foreach ($pubName in $IgnorePublishers)
         {
-            If ($app.publisher -Like $pubName)
+            If ($pubName -ne '' -And $app.CommonPublisher -Like "*$($pubName)*")
             {
                 $skip=$True
-                Write-Warning -Message "Not sending $($app.commonname) because the Publisher contains an ignored string: *$(pubName)*"
+                Write-Warning -Message "Not sending `"$($app.CommonName)`" because the Publisher contains an ignored string: *$($pubName)*"
             }
         }
 
 
-        Write-Progress -Activity 'Requesting Categorization' -Status "Sending $i of $max - State $($app.State) - $($app.commonname)" -PercentComplete (($i / $max)*100) -SecondsRemaining $secondsRemaining
-        Write-Verbose -Message "Sending $i of $max - State $($app.State) - $($app.commonname) - $($App.SoftwareKey)"
+        # Stop this iteration of the loop if we found an ignoreProducts or ignorePublishers match...
+        If ($skip = $false) {Continue}
+        
 
-        If ($skip = $false -And $pscmdlet.ShouldProcess($app.commonname, 'WHATIF Request categorization'))
-            {
-                $request = Invoke-WmiMethod -class SMS_AISoftwarelist -namespace Root\SMS\Site_$($siteCode) -name SetCategorizationRequest -ArgumentList $app.softwarekey
-                If ($request.ReturnValue -eq 0) {Write-Verbose -Message "Status $($request.ReturnValue) for $($app.commonname)"} Else {Write-Warning -Message "Return Status $($request.ReturnValue) for $($app.commonname)."}
-            }
+        If (($pscmdlet.ShouldProcess($app.CommonName, 'WHATIF Request categorization')) -and $skip -eq $false)
+        {
+            Write-Progress -Activity 'Requesting Categorization' -Status "Sending $i of $max - State $($app.State) - $($app.CommonName)" -PercentComplete (($i / $max)*100) -SecondsRemaining $secondsRemaining
+            Write-Verbose -Message "Sending $i of $max - State $($app.State) - $($app.CommonName) - $($App.SoftwareKey)"
+                
+            # Set the software categorization request...
+            $request = Invoke-WmiMethod -class SMS_AISoftwarelist -namespace Root\SMS\Site_$($siteCode) -name SetCategorizationRequest -ArgumentList $app.softwarekey
+                
+            # Output the status if successful and a warning if it fails...
+            If ($request.ReturnValue -eq 0) {Write-Verbose -Message "Status $($request.ReturnValue) for $($app.CommonName)"} Else {Write-Warning -Message "Return Status $($request.ReturnValue) for $($app.CommonName)."}
+        }
+        
     
         # Check to see if we can keep going...
         If($i -ge $max)
@@ -178,6 +186,6 @@ Begin
     {
         Write-Progress -Activity 'Requesting Categorization' -Status 'Telling AI Sync Point to synchronize at next polling interval.' -PercentComplete 100
         Write-Verbose -Message 'Flagging AI service to start synchronizing at next cycle. Default polling interval is 900 seconds. Monitor AIUpdateSvc.log and aikbmgr.log for status.'
-        If ($pscmdlet.ShouldProcess('WHATIF Start sync', $app.commonname)) {Invoke-WmiMethod -class SMS_AIProxy -namespace Root\SMS\Site_$($siteCode) -name RequestCatalogUpdate}
+        If ($pscmdlet.ShouldProcess('WHATIF Start sync', $app.CommonName)) {Invoke-WmiMethod -class SMS_AIProxy -namespace Root\SMS\Site_$($siteCode) -name RequestCatalogUpdate}
     }
 }
