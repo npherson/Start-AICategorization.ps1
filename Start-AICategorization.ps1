@@ -87,7 +87,7 @@ Begin
     Write-Progress -Activity 'Requesting Categorization' -Status 'Gathering list of applications from AI that are pending classification' -PercentComplete 2
     Write-Verbose -Message 'Getting list of applications from AI that are pending classification...'
     $appsList = Get-WmiObject -Namespace Root\SMS\Site_$($siteCode) -Class SMS_AISoftwarelist -Filter 'State = 4'
-    Write-Verbose -Message "Unsent categorization requests: $($apps.Count)"
+    Write-Verbose -Message "Unsent categorization requests: $($appsList.Count)"
 
 
     # Determine if we can send all the pending or if we need to limit it...
