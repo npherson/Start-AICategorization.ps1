@@ -111,17 +111,16 @@ Begin
     foreach ($app in $appsList)
     {
 
-        $i++
-        $secondsElapsed = (Get-Date) - $start
-        $secondsRemaining = ($secondsElapsed.TotalSeconds / $i) * ($max - $i)
-
-    
-        # Check to see if we can keep going...
-        If($i -gt $max)
+        # Check to see if we can keep going or if we've hit our maximum number of items...
+        If($i -ge $max)
         {
                 Write-Verbose -Message "Attempted the maximum number of entries (-Limit, All, or the daily max of 9999): $($Max)"
                 Break
-        }    
+        } Else {
+                 $i++
+                $secondsElapsed = (Get-Date) - $start
+                $secondsRemaining = ($secondsElapsed.TotalSeconds / $i) * ($max - $i)
+        }
 
 
         $skip = $False
@@ -189,6 +188,6 @@ Begin
     {
         Write-Progress -Activity 'Requesting Categorization' -Status 'Telling AI Sync Point to synchronize at next polling interval.' -PercentComplete 100
         Write-Verbose -Message 'Flagging AI service to start synchronizing at next cycle. Default polling interval is 900 seconds. Monitor AIUpdateSvc.log and aikbmgr.log for status.'
-        If ($pscmdlet.ShouldProcess('Start sync', $app.CommonName)) {Invoke-WmiMethod -class SMS_AIProxy -namespace Root\SMS\Site_$($siteCode) -name RequestCatalogUpdate}
+        If ($pscmdlet.ShouldProcess('Start sync', $app.CommonName)) {$SyncOutput = Invoke-WmiMethod -class SMS_AIProxy -namespace Root\SMS\Site_$($siteCode) -name RequestCatalogUpdate}
     }
 }
