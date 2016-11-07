@@ -81,7 +81,7 @@ Begin
     Write-Progress -Activity 'Requesting Categorization' -Status 'Getting the site code' -PercentComplete 0
     $SiteCode = ''
     Get-WMIObject -Namespace 'root\SMS' -Class SMS_ProviderLocation -ErrorAction SilentlyContinue | foreach-object { if ($_.ProviderForLocalSite -eq $true){$SiteCode=$_.sitecode} }
-    If ($SiteCode -eq ''){Throw 'Could not determine site code. Ensure you are running this script elevated while on the Primary Site Server. It is not designed to run remotely or without elevation.'}
+    If([String]::IsNullOrEmpty($SiteCode)) {Throw 'Could not determine site code. Ensure you are running this script elevated while on the Primary Site Server. It is not designed to run remotely or without elevation.'}
 
     # Pull the AI summary...
     Write-Progress -Activity 'Requesting Categorization' -Status 'Gathering summary of AI classification status' -PercentComplete 1
