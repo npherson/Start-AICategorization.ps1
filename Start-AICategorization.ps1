@@ -71,10 +71,18 @@ Begin
 {
     $start = Get-Date
 
-    # Find the site code, error out if scrit is not run on the Primary\SMS Provider...
+    # Find the site code from the SMS Provider...
     Write-Progress -Activity 'Requesting Categorization' -Status 'Getting the site code' -PercentComplete 0
     $SiteCode = ''
-    Get-WMIObject -Namespace 'root\SMS' -Class SMS_ProviderLocation -ErrorAction SilentlyContinue | foreach-object { if ($_.ProviderForLocalSite -eq $true){$SiteCode=$_.sitecode} }
+    Get-WMIObject -Namespace 'root\SMS' -Class SMS_ProviderLocation -ErrorAction SilentlyContinue | foreach-object
+    {
+        if ($_.ProviderForLocalSite -eq $true)
+        {
+            $SiteCode=$_.sitecode
+        } 
+    } 
+
+    # Error out if we couldn't find the Primary\SMS Provider...
     If([String]::IsNullOrEmpty($SiteCode))
     {
         Throw 'Could not determine site code. Ensure you are running this script elevated while on the Primary Site Server \ SMS Provider. It is not designed to run remotely or without elevation.'
@@ -148,7 +156,6 @@ Begin
             Continue
         }
         
-
         # Finally... let's try to send some software for categorization!
         If ($pscmdlet.ShouldProcess($app.CommonName, 'Request categorization'))
         {
@@ -169,28 +176,32 @@ Begin
 
     }
 
-    # Pull the AI summary after requesting categorization...
-    Write-Progress -Activity 'Requesting Categorization' -Status 'Gathering summary of AI classification status' -PercentComplete 100
-    Write-Verbose -Message 'Getting summary of AI classification status after running...'
-    $summaryAfter = Invoke-WmiMethod -class SMS_AISoftwarelist -namespace Root\SMS\Site_$($siteCode) -name GetSummary -WhatIf:$false
-    Write-Progress -Activity 'Requesting Categorization' -Completed
 
-    $secondsElapsed = (Get-Date) - $start
-    #$totalTime =  $secondsElapsed.ToString("hh\:mm\:ss")
-    $totalTime = $secondsElapsed.ToString('hh\ \h\o\u\r\s\ mm\ \m\i\n\ ss\ \s\e\c')
-    write-host 'Summary Information'
-    write-host "Before: $($SummaryBefore.Uncategorized)"
-    write-host "After:  $($SummaryAfter.Uncategorized)"
-    write-host "Tried:  $($i)"
-    write-host "Got:    $(($SummaryBefore.Uncategorized) - $($SummaryAfter.Uncategorized))"
-    write-host "Time Elapsed:  $($totalTime)"
-
-
-    # Tell the AI Sync Point to synchronize...
+    # Tell the AI Sync Point to synchronize if requested...
     If ($SyncCatalog)
     {
         Write-Progress -Activity 'Requesting Categorization' -Status 'Telling AI Sync Point to synchronize at next polling interval.' -PercentComplete 100
         Write-Verbose -Message 'Flagging AI service to start synchronizing at next cycle. Default polling interval is 900 seconds. Monitor AIUpdateSvc.log and aikbmgr.log for status.'
         If ($pscmdlet.ShouldProcess('Start sync', $app.CommonName)) {$SyncOutput = Invoke-WmiMethod -class SMS_AIProxy -namespace Root\SMS\Site_$($siteCode) -name RequestCatalogUpdate}
     }
+
+
+    # Pull the AI summary after requesting categorization...
+    Write-Progress -Activity 'Requesting Categorization' -Status 'Gathering summary of AI classification status' -PercentComplete 100
+    Write-Verbose -Message 'Getting summary of AI classification status after running...'
+    $summaryAfter = Invoke-WmiMethod -class SMS_AISoftwarelist -namespace Root\SMS\Site_$($siteCode) -name GetSummary -WhatIf:$false
+    Write-Progress -Activity 'Requesting Categorization' -Completed
+
+    # Output the final script summary... 
+    $secondsElapsed = (Get-Date) - $start
+    #$totalTime =  $secondsElapsed.ToString("hh\:mm\:ss")
+    $totalTime = $secondsElapsed.ToString('hh\ \h\o\u\r\s\ mm\ \m\i\n\ ss\ \s\e\c')
+    $properties = @{'UncategorizedBefore'=$($SummaryBefore.Uncategorized);
+                'UncategorizedAfter'=$($SummaryAfter.Uncategorized);
+                'Attempted'=$i;
+                'Completed'=$(($SummaryBefore.Uncategorized) - $($SummaryAfter.Uncategorized))
+                'TimeElapsed'=$($totalTime)}
+    $object = New-Object –TypeNamePSObject –Prop $properties
+    Write-Output $object 
+
 }
