@@ -1,9 +1,12 @@
 <#
     .SYNOPSIS
-        Used to flag all uncategorized software for categorization by the Asset Intelligence service.
+        Used to flag all unidentified software for categorization by the Asset Intelligence service.
 
     .DESCRIPTION
-        Use Start-AICategorization to take all of the Asset Intelligence Inventoried Software that needs to be categorized and mark them for upload to Microsoft Intune (System Center Online) for categorization. This script can be used as a scheduled task to send new software periodically for categorization.
+        Use Start-AICategorization to take all of the Asset Intelligence Inventoried Software that is 'Unknown' and request categorization from the Microsoft Intune (System Center Online) service.
+        
+        You can easily set this script up as a scheduled task on your Primary Site Server using a service account with the SCCM security role of 'Asset Manager'. For example:
+        SCHTASKS /Create /TN "ConfigMgr Start-AICategorization" /SC Daily /TR "POWERSHELL.EXE -ExecutionPolicy Bypass -File C:\Scripts\Start-AICategorization.ps1" /RU domain\CM-AI-ServiceAccount /RP *
 
         See the Request Catalog Update documentation for more details:
         https://technet.microsoft.com/en-us/library/gg712316.aspx#BKMK_RequestCatalogUpdate
@@ -12,7 +15,7 @@
         Optionally tell the AI Sync Point to start a synchronization to send pending categorization requests. Manual synchronizations are only accepted 1 time every 12 hours. The default polling period is 15 minutes, so monitor AIUpdateSvc.log and aikbmgr.log for status.
        
     .PARAMETER Limit
-        Optionally specify a naximum number of records to send. If left blank, it will send all uncategorized software up to 9,999 titles.
+        Optionally specify a naximum number of records to send. If left blank, it will send all unidentified software up to 9,999 titles.
 
     .PARAMETER IgnoreProducts	
         Optionally specify one or more strings to look for in the Product Name to exclude records from synchorization. If the application meta data may include private data, you can use this to not send the records.
@@ -21,7 +24,7 @@
         Optionally specify one or more strings to look for in the Publisher name to exlcude records from synchronization. If the application meta data may include private data, you can use this to not send the records.
 
     .EXAMPLE
-        Request Asset Intelligence categorization for all uncategorized Inventoried Software:
+        Request Asset Intelligence categorization for all unidentified Inventoried Software:
     
         PS C:\> Start-AICategorization
 
@@ -39,7 +42,7 @@
         Author  : Nash Pherson
         Email   : nashp@nowmicro.com
         Twitter : @KidMysic
-        Feedback: Please send feedback!  This is my first real attempt publishing/sharing a powershell script!
+        Feedback: Please send feedback! This is my first real attempt publishing/sharing a powershell script!
         Blog    : http://blog.nowmicro.com/category/nash-pherson/
         Blog    : http://windowsitpro.com/author/nash-pherson
         Tools   : http://nowmicro.com/rct
