@@ -3,7 +3,7 @@
         Used to flag all uncategorized software for categorization by the Asset Intelligence service.
 
     .DESCRIPTION
-        Use Start-AICategorization to take all of the Asset Intelligence Inventoried Software that needs to be categorized and mark them for upload to System Center Online for categorization. This script can be used as a scheduled task to send new software periodically for categorization.
+        Use Start-AICategorization to take all of the Asset Intelligence Inventoried Software that needs to be categorized and mark them for upload to Microsoft Intune (System Center Online) for categorization. This script can be used as a scheduled task to send new software periodically for categorization.
 
         See the Request Catalog Update documentation for more details:
         https://technet.microsoft.com/en-us/library/gg712316.aspx#BKMK_RequestCatalogUpdate
@@ -20,9 +20,6 @@
     .PARAMETER IgnorePublishers
         Optionally specify one or more strings to look for in the Publisher name to exlcude records from synchronization. If the application meta data may include private data, you can use this to not send the records.
 
-    .PARAMETER HideSummary
-        Optionally hide the summary information that is displayed at the end.
- 
     .EXAMPLE
         Request Asset Intelligence categorization for all uncategorized Inventoried Software:
     
@@ -48,7 +45,7 @@
         Tools   : http://nowmicro.com/rct
         
     .LINK
-        http://gallery.technet.microsoft.com/scirptscenter/ PUT THE GUID HERE
+        https://gallery.technet.microsoft.com/ConfigMgr-Request-d167ff3c
     
     .LINK
         http://www.nowmicro.com
@@ -66,22 +63,22 @@ Param
     [ValidateNotNullOrEmpty()]
     [ValidateRange(1,9999)]
     [Int]$Limit = 1,
-    [ValidateNotNullOrEmpty()]
     [String[]]$IgnoreProducts = @(''),
-    [String[]]$IgnorePublishers = @(''),
-    [Switch]$HideSummary = $False
-    
+    [String[]]$IgnorePublishers = @('')   
 )
 
 Begin
 {
     $start = Get-Date
 
-    # Find the site code, error out if we are not on the primary...
+    # Find the site code, error out if scrit is not run on the Primary\SMS Provider...
     Write-Progress -Activity 'Requesting Categorization' -Status 'Getting the site code' -PercentComplete 0
     $SiteCode = ''
     Get-WMIObject -Namespace 'root\SMS' -Class SMS_ProviderLocation -ErrorAction SilentlyContinue | foreach-object { if ($_.ProviderForLocalSite -eq $true){$SiteCode=$_.sitecode} }
-    If([String]::IsNullOrEmpty($SiteCode)) {Throw 'Could not determine site code. Ensure you are running this script elevated while on the Primary Site Server. It is not designed to run remotely or without elevation.'}
+    If([String]::IsNullOrEmpty($SiteCode))
+    {
+        Throw 'Could not determine site code. Ensure you are running this script elevated while on the Primary Site Server \ SMS Provider. It is not designed to run remotely or without elevation.'
+    }
 
     # Pull the AI summary...
     Write-Progress -Activity 'Requesting Categorization' -Status 'Gathering summary of AI classification status' -PercentComplete 1
@@ -99,7 +96,7 @@ Begin
     Write-Verbose -Message 'Determine how many records we can send for synchronization...'
     If ($limit -ge 10000)
     {
-        Write-Verbose -Message 'The daily limit for sending records is 10,000. Setting the limit for this script to 9,999 or the total number of pending items, whichever is less.'
+        Write-Warning -Message 'The daily limit for sending records is 10,000. Setting the limit for this script to 9,999 or the total number of pending items, whichever is less.'
         $limit = 9999
     }
     $max = $limit
@@ -114,7 +111,7 @@ Begin
         # Check to see if we can keep going or if we've hit our maximum number of items...
         If($i -ge $max)
         {
-                Write-Verbose -Message "Attempted the maximum number of entries (-Limit, All, or the daily max of 9999): $($Max)"
+                Write-Warning -Message "Attempted the maximum number of entries (-Limit, All, or the daily max of 9999): $($Max)"
                 Break
         } Else {
                  $i++
@@ -146,7 +143,8 @@ Begin
         }
 
         # Stop this iteration of the loop if we found an ignoreProducts or ignorePublishers match...
-        If ($skip -eq $True) {
+        If ($skip -eq $True)
+        {
             Continue
         }
         
@@ -161,7 +159,12 @@ Begin
             $request = Invoke-WmiMethod -class SMS_AISoftwarelist -namespace Root\SMS\Site_$($siteCode) -name SetCategorizationRequest -ArgumentList $app.softwarekey
                 
             # Output the status if successful and a warning if it fails...
-            If ($request.ReturnValue -eq 0) {Write-Verbose -Message "Status $($request.ReturnValue) for $($app.CommonName)"} Else {Write-Warning -Message "Return Status $($request.ReturnValue) for $($app.CommonName)."}
+            If ($request.ReturnValue -eq 0)
+            {
+                Write-Verbose -Message "Status $($request.ReturnValue) for $($app.CommonName)"
+            } Else {
+                Write-Warning -Message "Return Status $($request.ReturnValue) for $($app.CommonName)."
+            }
         }
 
     }
