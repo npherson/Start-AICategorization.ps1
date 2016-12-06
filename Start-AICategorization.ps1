@@ -65,7 +65,7 @@ Param
     [Switch]$SyncCatalog = $False,
     [ValidateNotNullOrEmpty()]
     [ValidateRange(1,9999)]
-    [Int]$Limit = 1,
+    [Int]$Limit = 9999,
     [String[]]$IgnoreProducts = @(''),
     [String[]]$IgnorePublishers = @('')   
 )
@@ -122,7 +122,7 @@ Begin
         # Check to see if we can keep going or if we've hit our maximum number of items...
         If($i -ge $max)
         {
-                Write-Warning -Message "Attempted the maximum number of entries (-Limit, All, or the daily max of 9999): $($Max)"
+                Write-Verbose -Message "Attempted the maximum number of entries (-Limit, All, or the daily max of 9999): $($Max)"
                 Break
         } Else {
                  $i++
