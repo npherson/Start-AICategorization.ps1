@@ -65,7 +65,7 @@ Param
     [Switch]$SyncCatalog = $False,
     [ValidateNotNullOrEmpty()]
     [ValidateRange(1,9999)]
-    [Int]$Limit = 9999,
+    [Int]$Limit,
     [String[]]$IgnoreProducts = @(''),
     [String[]]$IgnorePublishers = @('')   
 )
@@ -77,13 +77,13 @@ Begin
     # Find the site code from the SMS Provider...
     Write-Progress -Activity 'Requesting Categorization' -Status 'Getting the site code' -PercentComplete 0
     $SiteCode = ''
-    Get-WMIObject -Namespace 'root\SMS' -Class SMS_ProviderLocation -ErrorAction SilentlyContinue | foreach-object
-    {
-        if ($_.ProviderForLocalSite -eq $true)
-        {
-            $SiteCode=$_.sitecode
+    Get-WMIObject -Namespace 'root\SMS' -Class 'SMS_ProviderLocation' -ErrorAction SilentlyContinue |
+        foreach-object{
+            if ($_.ProviderForLocalSite -eq $true)
+            {
+                $SiteCode=$_.sitecode
+            } 
         } 
-    } 
 
     # Error out if we couldn't find the Primary\SMS Provider...
     If([String]::IsNullOrEmpty($SiteCode))
@@ -160,7 +160,7 @@ Begin
         }
         
         # Finally... let's try to send some software for categorization!
-        If ($pscmdlet.ShouldProcess($app.CommonName, 'Request categorization'))
+        If ($pscmdlet.ShouldProcess('Sync Catalog', 'Request categorization sync'))
         {
             Write-Progress -Activity 'Requesting Categorization' -Status "Sending $i of $max - State $($app.State) - $($app.CommonName)" -PercentComplete (($i / $max)*100) -SecondsRemaining $secondsRemaining
             Write-Verbose -Message "Sending $i of $max - State $($app.State) - $($app.CommonName) - $($App.SoftwareKey)"
@@ -197,14 +197,13 @@ Begin
 
     # Output the final script summary... 
     $secondsElapsed = (Get-Date) - $start
-    #$totalTime =  $secondsElapsed.ToString("hh\:mm\:ss")
     $totalTime = $secondsElapsed.ToString('hh\ \h\o\u\r\s\ mm\ \m\i\n\ ss\ \s\e\c')
     $properties = @{'UncategorizedBefore'=$($SummaryBefore.Uncategorized);
                 'UncategorizedAfter'=$($SummaryAfter.Uncategorized);
                 'Attempted'=$i;
                 'Completed'=$(($SummaryBefore.Uncategorized) - $($SummaryAfter.Uncategorized))
                 'TimeElapsed'=$($totalTime)}
-    $object = New-Object –TypeNamePSObject –Prop $properties
+    $object = New-Object –TypeName PSObject –Prop $properties
     Write-Output $object 
 
 }
