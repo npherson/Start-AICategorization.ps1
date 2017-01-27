@@ -213,7 +213,7 @@ Begin
                 'Attempted'=$i;
                 'Completed'=$(($SummaryBefore.Uncategorized) - $($SummaryAfter.Uncategorized));
                 'TimeElapsed'=$($totalTime)}
-    $object = New-Object –TypeName PSObject –Prop $properties
+    $object = New-Object -TypeName PSObject -Prop $properties
     Write-Output $object
 
 }
