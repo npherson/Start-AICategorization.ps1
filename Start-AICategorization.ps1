@@ -212,7 +212,6 @@ Begin
                 'UncategorizedAfter'=$($SummaryAfter.Uncategorized);
                 'Attempted'=$i;
                 'Completed'=$(($SummaryBefore.Uncategorized) - $($SummaryAfter.Uncategorized));
-                'Limit'=$Limit;
                 'TimeElapsed'=$($totalTime)}
     $object = New-Object –TypeName PSObject –Prop $properties
     Write-Output $object
