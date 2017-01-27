@@ -107,14 +107,14 @@ Begin
     Write-Verbose -Message 'Determine how many records we can send for synchronization...'
     If ($limit -ge 10000)
     {
-        Write-Warning -Message 'The daily limit for sending records is 10,000. Setting the limit for this script to 9,999 or the total number of pending items, whichever is less.'
+        Write-Warning -Message 'Once upon a time the daily limit for sending records was 10,000. Setting the limit for this script to 9,999 or the total number of pending items, whichever is less.'
         $limit = 9999
     }
     $max = $limit
     Write-Verbose -Message "Maximum number of software to attempt requesting categoriztaion: $($max)"
 
     # Send the list for categorization...
-    Write-Verbose -Message 'Attempting to categorize pending software...'
+    Write-Verbose -Message 'Attempting to mark unidentified software for requesting categorization...'
     $i = 0
     foreach ($app in $appsList)
     {
@@ -138,7 +138,7 @@ Begin
             If ($prodName -ne '' -And $app.CommonName -Like "*$($prodName)*")
             {
                 $skip=$True
-                Write-Warning -Message "Not sending `"$($app.CommonName)`" because the Publisher contains an ignored string: *$($prodName)*"
+                Write-Warning -Message "Not sending `"$($app.CommonName)`" because the Product contains an ignored string: *$($prodName)*"
             }
         }
         
@@ -160,10 +160,10 @@ Begin
         }
         
         # Finally... let's try to send some software for categorization!
-        If ($pscmdlet.ShouldProcess('Sync Catalog', 'Request categorization sync'))
+        If ($pscmdlet.ShouldProcess(($app.CommonName), 'Request categorization'))
         {
-            Write-Progress -Activity 'Requesting Categorization' -Status "Sending $i of $max - State $($app.State) - $($app.CommonName)" -PercentComplete (($i / $max)*100) -SecondsRemaining $secondsRemaining
-            Write-Verbose -Message "Sending $i of $max - State $($app.State) - $($app.CommonName) - $($App.SoftwareKey)"
+            Write-Progress -Activity 'Requesting Categorization' -Status "Sending $i/$max - State $($app.State) - $($app.CommonName)" -PercentComplete (($i / $max)*100) -SecondsRemaining $secondsRemaining
+            Write-Verbose -Message "Sending $i/$max - State $($app.State) - $($app.CommonName) - $($App.SoftwareKey)"
                 
             # Set the software categorization request...
             $request = Invoke-WmiMethod -class SMS_AISoftwarelist -namespace Root\SMS\Site_$($siteCode) -name SetCategorizationRequest -ArgumentList $app.softwarekey
@@ -185,7 +185,7 @@ Begin
     {
         Write-Progress -Activity 'Requesting Categorization' -Status 'Telling AI Sync Point to synchronize at next polling interval.' -PercentComplete 100
         Write-Verbose -Message 'Flagging AI service to start synchronizing at next cycle. Default polling interval is 900 seconds. Monitor AIUpdateSvc.log and aikbmgr.log for status.'
-        If ($pscmdlet.ShouldProcess('Start sync', $app.CommonName)) {$SyncOutput = Invoke-WmiMethod -class SMS_AIProxy -namespace Root\SMS\Site_$($siteCode) -name RequestCatalogUpdate}
+        If ($pscmdlet.ShouldProcess('Start sync', 'AI Catalog')) {$SyncOutput = Invoke-WmiMethod -class SMS_AIProxy -namespace Root\SMS\Site_$($siteCode) -name RequestCatalogUpdate}
     }
 
 
@@ -204,6 +204,6 @@ Begin
                 'Completed'=$(($SummaryBefore.Uncategorized) - $($SummaryAfter.Uncategorized))
                 'TimeElapsed'=$($totalTime)}
     $object = New-Object –TypeName PSObject –Prop $properties
-    Write-Output $object 
+    Write-Output $object
 
 }
