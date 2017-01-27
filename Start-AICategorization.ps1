@@ -65,7 +65,7 @@ Param
     [Switch]$SyncCatalog = $False,
     [ValidateNotNullOrEmpty()]
     [ValidateRange(1,9999)]
-    [Int]$Limit,
+    [Int]$Limit=50000,
     [String[]]$IgnoreProducts = @(''),
     [String[]]$IgnorePublishers = @('')   
 )
@@ -100,17 +100,27 @@ Begin
     Write-Progress -Activity 'Requesting Categorization' -Status 'Gathering list of applications from AI that are pending classification' -PercentComplete 2
     Write-Verbose -Message 'Getting list of applications from AI that are pending classification...'
     [array]$appsList = Get-WmiObject -Namespace Root\SMS\Site_$($siteCode) -Class SMS_AISoftwarelist -Filter 'State = 4'
-    Write-Verbose -Message "Categorized applications according to summarized AI data: $($appsList.Count)"
+    Write-Verbose -Message "Uncategorized applications according to summarized AI data: $($appsList.Count)"
     
 
     # Determine if we can send all the pending or if we need to limit it...
-    Write-Verbose -Message 'Determine how many records we can send for synchronization...'
-    If ($limit -ge 10000)
+    #Write-Verbose -Message 'Determine how many records we can send for synchronization...'
+    #If ($limit -ge 10000)
+    #{
+        #Write-Warning -Message 'Once upon a time the daily limit for sending records was 10,000. Setting the limit for this script to 9,999 or the total number of pending items, whichever is less.'
+        #$limit = 9999
+    #}
+
+
+    # Set the maximum number to send... either all or the limit parameter.
+    If ($appsList.Count -lt $Limit) 
     {
-        Write-Warning -Message 'Once upon a time the daily limit for sending records was 10,000. Setting the limit for this script to 9,999 or the total number of pending items, whichever is less.'
-        $limit = 9999
+        $max = $appsLIst.Count
+    } Else {
+        $max = $limit
     }
-    $max = $limit
+
+    
     Write-Verbose -Message "Maximum number of software to attempt requesting categoriztaion: $($max)"
 
     # Send the list for categorization...
@@ -201,7 +211,8 @@ Begin
     $properties = @{'UncategorizedBefore'=$($SummaryBefore.Uncategorized);
                 'UncategorizedAfter'=$($SummaryAfter.Uncategorized);
                 'Attempted'=$i;
-                'Completed'=$(($SummaryBefore.Uncategorized) - $($SummaryAfter.Uncategorized))
+                'Completed'=$(($SummaryBefore.Uncategorized) - $($SummaryAfter.Uncategorized));
+                'Limit'=$Limit;
                 'TimeElapsed'=$($totalTime)}
     $object = New-Object –TypeName PSObject –Prop $properties
     Write-Output $object
