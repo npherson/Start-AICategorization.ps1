@@ -65,7 +65,7 @@ Param
     [Switch]$SyncCatalog = $False,
     [ValidateNotNullOrEmpty()]
     [ValidateRange(1,9999)]
-    [Int]$Limit = 9999,
+    [Int]$Limit=50000,
     [String[]]$IgnoreProducts = @(''),
     [String[]]$IgnorePublishers = @('')   
 )
@@ -77,13 +77,13 @@ Begin
     # Find the site code from the SMS Provider...
     Write-Progress -Activity 'Requesting Categorization' -Status 'Getting the site code' -PercentComplete 0
     $SiteCode = ''
-    Get-WMIObject -Namespace 'root\SMS' -Class SMS_ProviderLocation -ErrorAction SilentlyContinue | foreach-object
-    {
-        if ($_.ProviderForLocalSite -eq $true)
-        {
-            $SiteCode=$_.sitecode
+    Get-WMIObject -Namespace 'root\SMS' -Class 'SMS_ProviderLocation' -ErrorAction SilentlyContinue |
+        foreach-object{
+            if ($_.ProviderForLocalSite -eq $true)
+            {
+                $SiteCode=$_.sitecode
+            } 
         } 
-    } 
 
     # Error out if we couldn't find the Primary\SMS Provider...
     If([String]::IsNullOrEmpty($SiteCode))
@@ -100,21 +100,31 @@ Begin
     Write-Progress -Activity 'Requesting Categorization' -Status 'Gathering list of applications from AI that are pending classification' -PercentComplete 2
     Write-Verbose -Message 'Getting list of applications from AI that are pending classification...'
     [array]$appsList = Get-WmiObject -Namespace Root\SMS\Site_$($siteCode) -Class SMS_AISoftwarelist -Filter 'State = 4'
-    Write-Verbose -Message "Categorized applications according to summarized AI data: $($appsList.Count)"
+    Write-Verbose -Message "Uncategorized applications according to summarized AI data: $($appsList.Count)"
     
 
     # Determine if we can send all the pending or if we need to limit it...
-    Write-Verbose -Message 'Determine how many records we can send for synchronization...'
-    If ($limit -ge 10000)
+    #Write-Verbose -Message 'Determine how many records we can send for synchronization...'
+    #If ($limit -ge 10000)
+    #{
+        #Write-Warning -Message 'Once upon a time the daily limit for sending records was 10,000. Setting the limit for this script to 9,999 or the total number of pending items, whichever is less.'
+        #$limit = 9999
+    #}
+
+
+    # Set the maximum number to send... either all or the limit parameter.
+    If ($appsList.Count -lt $Limit) 
     {
-        Write-Warning -Message 'The daily limit for sending records is 10,000. Setting the limit for this script to 9,999 or the total number of pending items, whichever is less.'
-        $limit = 9999
+        $max = $appsLIst.Count
+    } Else {
+        $max = $limit
     }
-    $max = $limit
+
+    
     Write-Verbose -Message "Maximum number of software to attempt requesting categoriztaion: $($max)"
 
     # Send the list for categorization...
-    Write-Verbose -Message 'Attempting to categorize pending software...'
+    Write-Verbose -Message 'Attempting to mark unidentified software for requesting categorization...'
     $i = 0
     foreach ($app in $appsList)
     {
@@ -138,7 +148,7 @@ Begin
             If ($prodName -ne '' -And $app.CommonName -Like "*$($prodName)*")
             {
                 $skip=$True
-                Write-Warning -Message "Not sending `"$($app.CommonName)`" because the Publisher contains an ignored string: *$($prodName)*"
+                Write-Warning -Message "Not sending `"$($app.CommonName)`" because the Product contains an ignored string: *$($prodName)*"
             }
         }
         
@@ -160,10 +170,10 @@ Begin
         }
         
         # Finally... let's try to send some software for categorization!
-        If ($pscmdlet.ShouldProcess($app.CommonName, 'Request categorization'))
+        If ($pscmdlet.ShouldProcess(($app.CommonName), 'Request categorization'))
         {
-            Write-Progress -Activity 'Requesting Categorization' -Status "Sending $i of $max - State $($app.State) - $($app.CommonName)" -PercentComplete (($i / $max)*100) -SecondsRemaining $secondsRemaining
-            Write-Verbose -Message "Sending $i of $max - State $($app.State) - $($app.CommonName) - $($App.SoftwareKey)"
+            Write-Progress -Activity 'Requesting Categorization' -Status "Sending $i/$max - State $($app.State) - $($app.CommonName)" -PercentComplete (($i / $max)*100) -SecondsRemaining $secondsRemaining
+            Write-Verbose -Message "Sending $i/$max - State $($app.State) - $($app.CommonName) - $($App.SoftwareKey)"
                 
             # Set the software categorization request...
             $request = Invoke-WmiMethod -class SMS_AISoftwarelist -namespace Root\SMS\Site_$($siteCode) -name SetCategorizationRequest -ArgumentList $app.softwarekey
@@ -185,7 +195,7 @@ Begin
     {
         Write-Progress -Activity 'Requesting Categorization' -Status 'Telling AI Sync Point to synchronize at next polling interval.' -PercentComplete 100
         Write-Verbose -Message 'Flagging AI service to start synchronizing at next cycle. Default polling interval is 900 seconds. Monitor AIUpdateSvc.log and aikbmgr.log for status.'
-        If ($pscmdlet.ShouldProcess('Start sync', $app.CommonName)) {$SyncOutput = Invoke-WmiMethod -class SMS_AIProxy -namespace Root\SMS\Site_$($siteCode) -name RequestCatalogUpdate}
+        If ($pscmdlet.ShouldProcess('Start sync', 'AI Catalog')) {$SyncOutput = Invoke-WmiMethod -class SMS_AIProxy -namespace Root\SMS\Site_$($siteCode) -name RequestCatalogUpdate}
     }
 
 
@@ -197,14 +207,13 @@ Begin
 
     # Output the final script summary... 
     $secondsElapsed = (Get-Date) - $start
-    #$totalTime =  $secondsElapsed.ToString("hh\:mm\:ss")
     $totalTime = $secondsElapsed.ToString('hh\ \h\o\u\r\s\ mm\ \m\i\n\ ss\ \s\e\c')
     $properties = @{'UncategorizedBefore'=$($SummaryBefore.Uncategorized);
                 'UncategorizedAfter'=$($SummaryAfter.Uncategorized);
                 'Attempted'=$i;
-                'Completed'=$(($SummaryBefore.Uncategorized) - $($SummaryAfter.Uncategorized))
+                'Completed'=$(($SummaryBefore.Uncategorized) - $($SummaryAfter.Uncategorized));
                 'TimeElapsed'=$($totalTime)}
-    $object = New-Object –TypeNamePSObject –Prop $properties
-    Write-Output $object 
+    $object = New-Object –TypeName PSObject –Prop $properties
+    Write-Output $object
 
 }
