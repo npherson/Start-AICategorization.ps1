@@ -3,7 +3,7 @@
         Used to flag all unidentified software for categorization by the Asset Intelligence service.
 
     .DESCRIPTION
-        Use Start-AICategorization to take all of the Asset Intelligence Inventoried Software that is 'Unknown' and request categorization from the Microsoft Intune (System Center Online) service.
+        Use Start-AICategorization to take all of the Asset Intelligence Inventoried Software that is 'Uncategorized' (unknown) and request categorization from the Microsoft Intune (System Center Online) service.
         
         You can easily set this script up as a scheduled task on your Primary Site Server using a service account with the SCCM security role of 'Asset Manager'. For example:
         SCHTASKS /Create /TN "ConfigMgr Start-AICategorization" /SC Daily /TR "POWERSHELL.EXE -ExecutionPolicy Bypass -File C:\Scripts\Start-AICategorization.ps1" /RU domain\CM-AI-ServiceAccount /RP *
@@ -42,10 +42,10 @@
         Author  : Nash Pherson
         Email   : nashp@nowmicro.com
         Twitter : @KidMysic
-        Feedback: Please send feedback! This is my first real attempt publishing/sharing a powershell script!
+        Feedback: Please send feedback! This is my first real attempt publishing/sharing a powershell tool!
         Blog    : http://blog.nowmicro.com/category/nash-pherson/
         Blog    : http://windowsitpro.com/author/nash-pherson
-        Tools   : http://nowmicro.com/rct
+        Tools   : http://nowmicro.com/RCT
         
     .LINK
         https://gallery.technet.microsoft.com/ConfigMgr-Request-d167ff3c
@@ -85,11 +85,22 @@ Begin
             } 
         } 
 
+
     # Error out if we couldn't find the Primary\SMS Provider...
     If([String]::IsNullOrEmpty($SiteCode))
     {
         Throw 'Could not determine site code. Ensure you are running this script elevated while on the Primary Site Server \ SMS Provider. It is not designed to run remotely or without elevation.'
     }
+
+
+    #Error out if we couldn't find an AI Sync Point...
+    Write-Progress -Activity 'Requesting Categorization' -Status 'Verifying at least one site system has the AI Sync Point role' -PercentComplete 0
+    $aiSyncPoint = Get-WMIObject -Class SMS_SystemResourceList -NameSpace root\sms\site_$SiteCode -Filter 'RoleName = "AI Update Service Point"'
+    If([String]::IsNullOrEmpty($aiSyncPoint))
+    {
+        Throw 'Could not locate an Asset Intelligence Synchronization Point role on any site system. Please ensure you have installed the AI Sync Point role on a site system with internet access.'
+    }
+    
 
     # Pull the AI summary...
     Write-Progress -Activity 'Requesting Categorization' -Status 'Gathering summary of AI classification status' -PercentComplete 1
@@ -103,11 +114,17 @@ Begin
     Write-Verbose -Message "Uncategorized applications according to summarized AI data: $($appsList.Count)"
     
 
+    
+    # Commenting out the arbitrary 10k record limit... Once upon a time the daily limit for sending records was 10,000.
+    # This was because the Microsoft Online Service was hosted on a desktop computer beneath someone's desk... And that
+    # person didn't work there anymore... and nobody really knew where that computer was... or why it kept crashing when
+    # people sent too many records.  But that's fixed now... so that's good. #ThereIsNoCloud    
+    
     # Determine if we can send all the pending or if we need to limit it...
     #Write-Verbose -Message 'Determine how many records we can send for synchronization...'
     #If ($limit -ge 10000)
     #{
-        #Write-Warning -Message 'Once upon a time the daily limit for sending records was 10,000. Setting the limit for this script to 9,999 or the total number of pending items, whichever is less.'
+        #Write-Warning -Message 'Setting the limit for this script to 9,999 or the total number of pending items, whichever is less.'
         #$limit = 9999
     #}
 
@@ -213,7 +230,6 @@ Begin
                 'Attempted'=$i;
                 'Completed'=$(($SummaryBefore.Uncategorized) - $($SummaryAfter.Uncategorized));
                 'TimeElapsed'=$($totalTime)}
-    $object = New-Object -TypeName PSObject -Prop $properties
-    Write-Output $object
-
+    $outputObject = New-Object -TypeName PSObject -Property $properties
+    Write-Output $outputObject
 }
