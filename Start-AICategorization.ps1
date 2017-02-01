@@ -41,7 +41,7 @@
     .NOTES
         Author  : Nash Pherson
         Email   : nashp@nowmicro.com
-        Twitter : @KidMysic
+        Twitter : @KidMytsic  https://twitter.com/kidmystic
         Feedback: Please send feedback! This is my first real attempt publishing/sharing a powershell tool!
         Blog    : http://blog.nowmicro.com/category/nash-pherson/
         Blog    : http://windowsitpro.com/author/nash-pherson
